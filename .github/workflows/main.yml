@@ -1,0 +1,24 @@
+name: Example workflow for S3 Deploy
+on: 
+  push:
+    branches:
+    - master
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+      
+    - name: configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESSKEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRETKEY }}
+        aws-region: us-east-1
+        
+    - name: updating cloudformation stack
+      run: |
+        aws cloudformation update-stack --stack-name cloudresumechallenge --template-body file://template.yaml --capabilities CAPABILITY_NAMED_IAM
+        
+   
