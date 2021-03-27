@@ -80,7 +80,7 @@ Resources:
                 Resource:
                   - !Sub >-
                     arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/UserViewCount:*
-          PolicyName: portfolio-1
+          PolicyName: Cloudwatchlogs
         - PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -90,7 +90,7 @@ Resources:
                 Resource: 
                   - !Sub >-
                       arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*
-          PolicyName: portfolio-2
+          PolicyName: dyanamodb acesess
   
   
   mydynamoDB:
