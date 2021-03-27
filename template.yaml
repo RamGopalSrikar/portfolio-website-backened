@@ -1,0 +1,110 @@
+Resources:
+  mylambdafunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        S3Bucket: portfolio-lambda-usercount
+        S3Key: deploy.zip
+      FunctionName: UserViewCount
+      Handler: lambda_function.lambda_handler
+      PackageType: Zip
+      Role: !GetAtt lambdaIAMRole.Arn
+      Runtime: python3.8
+  myAPIgateway:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Name: getviewcount
+  
+  APIgatewayMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+
+      ResourceId: !GetAtt myAPIgateway.RootResourceId
+      RestApiId: !Ref myAPIgateway
+
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub 
+          - >-
+            arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+          - lambdaArn: !GetAtt mylambdafunction.Arn
+
+      MethodResponses:
+      - StatusCode: 200
+        ResponseModels:
+          application/json: 'Empty'
+
+  apiGatewayDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    DependsOn:
+      - APIgatewayMethod
+    Properties:
+      RestApiId: !Ref myAPIgateway
+      StageName: v1
+
+  lambdaApiGatewayInvoke:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt mylambdafunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${myAPIgateway}/*/GET/*
+
+  lambdaIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Effect: Allow
+                Resource:
+                  - !Sub >-
+                    arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/UserViewCount:*
+          PolicyName: portfolio-1
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - 'dynamodb:*'
+                Effect: Allow
+                Resource: 
+                  - !Sub >-
+                      arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*
+          PolicyName: portfolio-2
+  
+  
+  mydynamoDB:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: N
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TableName: portfolio-viewcount
+Metadata:
+  'AWS::CloudFormation::Designer': {}
